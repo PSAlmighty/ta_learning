@@ -1,15 +1,10 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Aug 27 18:53:46 2017
-
-@author: lenovo
-"""
 import urllib
-from ta_func import *
 import pandas as pd
 from matplotlib import pyplot as plt
 from sklearn.ensemble import RandomForestClassifier
 import numpy as np
+import os
+import talib
 """
 get technical data for training
 
@@ -21,16 +16,15 @@ urllib.request.urlretrieve(url,stock)
 df = pd.read_csv(stock)
 
 df.iloc[:] = df.iloc[::-1].values
-try:
-    rsi = RSI(df,14)
-    atr = ATR(df,14)
-    roc = ROC(df,14)
-    sto = STO(df,14)
-except Exception as e:
-    print(e)    
-frames = [rsi,atr,roc,sto]
+
+rsi = pd.DataFrame(talib.RSI(df['Close'].values,timeperiod=14),columns=['RSI_14'])
+atr = pd.DataFrame(talib.ATR(df['High'].values,df['Low'].values,df['Close'].values,timeperiod=14),columns=["ATR_14"])
+roc = pd.DataFrame(talib.ROC(df['Close'].values,timeperiod=14),columns=["ROC_14"])
+wilr = pd.DataFrame(talib.WILLR(df['High'].values,df['Low'].values,df['Close'].values,timeperiod=14),columns=["WILLR"])
+    
+frames = [df,rsi,atr,roc,wilr]
 data = pd.concat(frames,axis=1)
-data = data.loc[13:,~data.columns.duplicated()].reset_index()
+data = data.loc[14:,~data.columns.duplicated()].reset_index()
 close = data['Close'].values
 
 Target = []
@@ -45,7 +39,7 @@ for i in range(len(close)):
 
 
 forest = RandomForestClassifier(n_estimators=5, random_state=2)  
-X=data[['RSI_14','ATR_14','ROC_14','SO%d_14']].copy()
+X=data[['RSI_14','ATR_14','ROC_14','WILLR']].copy()
 train_X = X[:len(X)-1]
 train_Y = Target[:len(Target)-1] #.reshape(len(Target),)
 forest.fit(train_X,train_Y)
@@ -54,3 +48,5 @@ y_pred_frt = forest.predict(X)
 #print(np.mean(y_pred_frt == train_Y))
 print (data['Date'].values[-1])
 print(y_pred_frt[-1])
+
+os.system("del /f %s" %stock)
