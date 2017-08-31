@@ -6,7 +6,7 @@ this script will predict wheter the closing stock price will go UP or DOWN tomor
 The details can be observed in the script itself
 The data for training and predictions are obtained from google finance
 
-#depedencies
+# depedencies
 * numpy
 * pandas
 * talib
