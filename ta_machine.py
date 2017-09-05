@@ -10,28 +10,41 @@ from sklearn import svm
 
 
 def prediksi(ticker):
-    url="https://www.google.com/finance/historical?output=csv&q="+ticker
-    stock=ticker+".csv"
-    urllib.request.urlretrieve(url,stock)
-    df = pd.read_csv(stock)
-    
+    try:
+        url="https://www.google.com/finance/historical?output=csv&q="+ticker
+        stock=ticker+".csv"
+        urllib.request.urlretrieve(url,stock)
+    except:
+        print("Retrying..")
+        url="https://www.google.com/finance/historical?output=csv&q="+ticker
+        stock=ticker+".csv"
+        urllib.request.urlretrieve(url,stock)
+        print("Connection Error..")
+
+        
+    df = pd.read_csv(stock).dropna(how='any') 
+    for i in df:
+        df = df[~df[i].isin(["-"])]
+        
     df.iloc[:] = df.iloc[::-1].values
+        
     try:
         rsi = pd.DataFrame(talib.RSI(df['Close'].values,timeperiod=14),columns=['RSI_14'])
-        atr = pd.DataFrame(talib.ATR(df['High'].values,df['Low'].values,df['Close'].values,timeperiod=14),columns=["ATR_14"])
+        atr = pd.DataFrame(talib.ATR(df['High'].values.astype(float),df['Low'].values.astype(float),df['Close'].values.astype(float),timeperiod=14),columns=["ATR_14"])
         roc = pd.DataFrame(talib.ROC(df['Close'].values,timeperiod=14),columns=["ROC_14"])
-        wilr = pd.DataFrame(talib.WILLR(df['High'].values,df['Low'].values,df['Close'].values,timeperiod=14),columns=["WILLR"])
+        wilr = pd.DataFrame(talib.WILLR(df['High'].values.astype(float),df['Low'].values.astype(float),df['Close'].values,timeperiod=14),columns=["WILLR"])
         mom = pd.DataFrame(talib.MOM(df['Close'].values,timeperiod=14),columns=["MOM_14"])
-        aaron = pd.DataFrame(talib.AROONOSC(df['High'].values,df['Low'].values,timeperiod=14),columns=["ARN_14"])
-    except:
-        print("this stock is not actively traded")   
+        aaron = pd.DataFrame(talib.AROONOSC(df['High'].values.astype(float),df['Low'].values.astype(float),timeperiod=14),columns=["ARN_14"])
+    except Exception as e:
+        print(e)   
         
     frames = [df,rsi,atr,roc,wilr,mom,aaron]
     data = pd.concat(frames,axis=1)
     data = data.loc[14:,~data.columns.duplicated()].reset_index()
+    data = data.dropna()
     close = data['Close'].values
-    Target = []
     
+    Target = []
     for i in range(len(close)):
         try:
             if close[i]<close[i+1]:
@@ -84,11 +97,10 @@ def prediksi(ticker):
     print("Support Vector Machine: ")
     print(y_pred_gnb[-1])
     hasil = y_pred_nn[-1][0]+y_pred_gnb[-1][0]+y_pred_frt[-1][0]+y_pred_vm[-1][0]
-        
-    
+            
     os.system("del /f %s" %stock)
     return close,Target,train_X,hasil
 
 if __name__ == '__main__':
     ticker = input("predict what stock?: ")
-    prediksi(ticker)
+    y=prediksi(ticker)
