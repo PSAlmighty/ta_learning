@@ -7,19 +7,24 @@ import os
 import talib
 from sklearn.naive_bayes import GaussianNB
 from sklearn import svm
+from matplotlib import pyplot as plt
 
 
 def prediksi(ticker):
+    print(ticker)
     try:
         url="https://www.google.com/finance/historical?output=csv&q="+ticker
         stock=ticker+".csv"
         urllib.request.urlretrieve(url,stock)
     except:
-        print("Retrying..")
-        url="https://www.google.com/finance/historical?output=csv&q="+ticker
-        stock=ticker+".csv"
-        urllib.request.urlretrieve(url,stock)
-        print("Connection Error..")
+        try:
+            print("Retrying..")
+            url="https://www.google.com/finance/historical?output=csv&q="+ticker
+            stock=ticker+".csv"
+            urllib.request.urlretrieve(url,stock)
+        except:
+            print("Connection Error..")
+            exit(0)
 
         
     df = pd.read_csv(stock).dropna(how='any') 
@@ -35,6 +40,7 @@ def prediksi(ticker):
         wilr = pd.DataFrame(talib.WILLR(df['High'].values.astype(float),df['Low'].values.astype(float),df['Close'].values,timeperiod=14),columns=["WILLR"])
         mom = pd.DataFrame(talib.MOM(df['Close'].values,timeperiod=14),columns=["MOM_14"])
         aaron = pd.DataFrame(talib.AROONOSC(df['High'].values.astype(float),df['Low'].values.astype(float),timeperiod=14),columns=["ARN_14"])
+       
     except Exception as e:
         print(e)   
         
@@ -90,14 +96,12 @@ def prediksi(ticker):
     print("Suppor Vector Machine: %.3f " %(np.mean(y_eval_vm == train_Y)))
     y_pred_frt = forest.predict(X)
     print ("using " + data['Date'].values[-1] +" data")
-    print("Random Forest: ")
-    print(y_pred_frt[-1])
-    print("Neural Network:")
-    print(y_pred_nn[-1])
-    print("Naive Bayes: ")
-    print(y_pred_gnb[-1])
-    print("Support Vector Machine: ")
-    print(y_pred_gnb[-1])
+    
+    print("Random Forest: %s" %(y_pred_frt[-1]))
+    print("Neural Network: %s" %(y_pred_nn[-1]))
+    print("Naive Bayes: %s" %(y_pred_gnb[-1]))
+    print("Support Vector Machine: %s \n" %(y_pred_gnb[-1]))
+
     hasil = y_pred_nn[-1][0]+y_pred_gnb[-1][0]+y_pred_frt[-1][0]+y_pred_vm[-1][0]
             
     os.system("del /f %s" %stock)
@@ -105,4 +109,26 @@ def prediksi(ticker):
 
 if __name__ == '__main__':
     ticker = input("predict what stock?: ")
-    prediksi(ticker)
+    y = prediksi(ticker)
+    df = y[2]
+    #df['ROC_14'].plot(figsize=(10,10))
+    
+    fig, axes = plt.subplots(nrows=len(df.columns)+1,sharex=True)
+    index = 0
+    fig.tight_layout()
+    for i in df:
+        df[i].plot(ax=axes[index],title=i,figsize=(9,9))
+        index+=1
+        
+        
+    ticks = []
+    for i in y[1]:
+        if i=="STABLE":
+            ticks.append(0.0)
+        elif i == "UP":    
+            ticks.append(10)
+        else:    
+            ticks.append(-10)
+            
+    axes[index].plot(ticks)
+    axes[index].set_title("Price Movement")
