@@ -1,3 +1,9 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sun Aug 27 18:53:46 2017
+
+@author: lenovo
+"""
 import urllib
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
@@ -8,6 +14,9 @@ import talib
 from sklearn.naive_bayes import GaussianNB
 from sklearn import svm
 from matplotlib import pyplot as plt
+from candleplot import *
+import pyqtgraph as pg
+from PyQt5 import QtCore, QtGui, QtWidgets
 
 
 def prediksi(ticker):
@@ -50,14 +59,18 @@ def prediksi(ticker):
     data = data.dropna(how='any')
     close = data['Close'].values
     
+    threshold = float(input("threshold (%): "))
+    
+    up_t = 1+threshold/100
+    down_t = 1-threshold/100
     Target = []
     for i in range(len(close)):
         try:
-            if (close[i]*1.01)<close[i+1]:
+            if (close[i]*up_t)<close[i+1]:
                 Target.append("UP")
-            elif (close[i]*0.99)<=close[i+1] and (close[i]*1.01)>=close[i+1]:
+            elif (close[i]*down_t<=close[i+1]) and (close[i]*up_t)>=close[i+1]:
                 Target.append("STABLE")
-            elif (close[i]*0.99)>close[i+1]:
+            elif (close[i]*down_t)>close[i+1]:
                 Target.append("DOWN")
                 
         except:
@@ -105,7 +118,7 @@ def prediksi(ticker):
     hasil = y_pred_nn[-1][0]+y_pred_gnb[-1][0]+y_pred_frt[-1][0]+y_pred_vm[-1][0]
             
     os.system("del /f %s" %stock)
-    return close,Target,train_X,hasil
+    return close,Target,train_X,hasil,data
 
 if __name__ == '__main__':
     ticker = input("predict what stock?: ")
@@ -119,8 +132,7 @@ if __name__ == '__main__':
     for i in df:
         df[i].plot(ax=axes[index],title=i,figsize=(9,9))
         index+=1
-        
-        
+                
     ticks = []
     for i in y[1]:
         if i=="STABLE":
@@ -132,3 +144,22 @@ if __name__ == '__main__':
             
     axes[index].plot(ticks)
     axes[index].set_title("Price Movement")
+    plt.show()
+    
+    data = []
+    data_plot = y[4]
+    for i in range(len(data_plot)):
+        temp=(i, data_plot['Open'][i], data_plot['Close'][i], data_plot['Low'][i], data_plot['High'][i])
+        temp=tuple(temp)
+        data.append(temp)
+        
+    item = CandlestickItem(data)
+    plt_qt = pg.plot(title='price candleplot')
+    plt_qt.addItem(item)
+    
+    import sys
+    if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
+        QtGui.QApplication.instance().exec_()
+    
+    
+
